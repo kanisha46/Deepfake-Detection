@@ -1,0 +1,2 @@
+model,threshold,test_images,accuracy,balanced_accuracy,roc_auc,macro_f1
+EfficientNet-B0,0.725,2100,0.799047619047619,0.7994444444444444,0.8949388888888888,0.7020972194395851

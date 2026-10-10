@@ -1,0 +1,2 @@
+model,threshold,test_images,accuracy,balanced_accuracy,roc_auc,macro_f1,real_recall,fake_recall
+Vision Transformer (ViT),0.65,2100,0.878095238095238,0.7997222222222222,0.9127731481481483,0.7726946006511353,0.69,0.9094444444444445
