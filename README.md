@@ -14,7 +14,7 @@ An academic, research-grade computer vision system evaluating and enhancing cros
 ## 📌 Research Team
 - **Priyanka Ganjawala** (Student ID: IT035)
 - **Kanisha Jasoliya** (Student ID: IT047)
-- *Department of Information Technology, Dharmsinh Desai University, Surat, Gujarat, India*
+- *Department of Information Technology, Dharmsinh Desai University, Nadiad, Gujarat, India*
 
 ---
 
