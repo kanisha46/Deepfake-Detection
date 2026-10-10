@@ -147,33 +147,33 @@ export default function Experiments() {
 
             {selectedExp.confusion_matrix && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', margin: '20px 0' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '100px 140px 140px', gap: '8px', textAlign: 'center', fontSize: '0.85rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 140px 140px', gap: '10px', textAlign: 'center', fontSize: '0.85rem' }}>
                   <div></div>
-                  <div style={{ fontWeight: 700, color: '#065f46' }}>Pred REAL</div>
-                  <div style={{ fontWeight: 700, color: '#9f1239' }}>Pred FAKE</div>
+                  <div style={{ fontWeight: 700, color: '#065f46' }}>Pred. Authentic</div>
+                  <div style={{ fontWeight: 700, color: '#9f1239' }}>Pred. Synthetic</div>
 
                   <div style={{ fontWeight: 700, color: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    Actual REAL (300)
+                    Actual Authentic (300)
                   </div>
-                  <div style={{ background: '#d1fae5', padding: '18px', borderRadius: '8px', border: '1px solid #10b981' }}>
+                  <div style={{ background: '#d1fae5', padding: '16px', borderRadius: '8px', border: '1px solid #10b981' }}>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#065f46' }}>{selectedExp.confusion_matrix[0][0]}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#047857' }}>True Real (TN)</div>
+                    <div style={{ fontSize: '0.72rem', color: '#047857' }}>True Authentic (TN)</div>
                   </div>
-                  <div style={{ background: '#ffe4e6', padding: '18px', borderRadius: '8px', border: '1px solid #f43f5e' }}>
+                  <div style={{ background: '#ffe4e6', padding: '16px', borderRadius: '8px', border: '1px solid #f43f5e' }}>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#9f1239' }}>{selectedExp.confusion_matrix[0][1]}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#881337' }}>False Fake (FP)</div>
+                    <div style={{ fontSize: '0.72rem', color: '#881337' }}>False Synthetic (FP)</div>
                   </div>
 
                   <div style={{ fontWeight: 700, color: '#9f1239', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    Actual FAKE (1800)
+                    Actual Synthetic (1800)
                   </div>
-                  <div style={{ background: '#ffe4e6', padding: '18px', borderRadius: '8px', border: '1px solid #f43f5e' }}>
+                  <div style={{ background: '#ffe4e6', padding: '16px', borderRadius: '8px', border: '1px solid #f43f5e' }}>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#9f1239' }}>{selectedExp.confusion_matrix[1][0]}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#881337' }}>False Real (FN)</div>
+                    <div style={{ fontSize: '0.72rem', color: '#881337' }}>False Authentic (FN)</div>
                   </div>
-                  <div style={{ background: '#d1fae5', padding: '18px', borderRadius: '8px', border: '1px solid #10b981' }}>
+                  <div style={{ background: '#d1fae5', padding: '16px', borderRadius: '8px', border: '1px solid #10b981' }}>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#065f46' }}>{selectedExp.confusion_matrix[1][1]}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#047857' }}>True Fake (TP)</div>
+                    <div style={{ fontSize: '0.72rem', color: '#047857' }}>True Synthetic (TP)</div>
                   </div>
                 </div>
               </div>

@@ -1,110 +1,133 @@
-import { useState, useEffect } from 'react';
-import { getModels, selectModel } from '../services/api';
-
 export default function ModelSelector({ selectedModel, onModelChange }) {
-  const [modelsList, setModelsList] = useState([
+  const models = [
     {
       id: 'efficientnet_b0',
-      name: 'EfficientNet-B0 (CNN Backbone)',
-      status: 'VERIFIED_CHECKPOINT',
-      checkpoint_available: true,
-      default_threshold: 0.50,
-      description: 'Convolutional neural network trained on FaceForensics++ C23. Balanced accuracy 81.11% (ROC-AUC 0.8949). Grad-CAM supported.'
+      name: 'EfficientNet-B0',
+      category: 'Convolutional Neural Network',
+      badge: 'Fast Spatial Scan',
+      badgeColor: '#4f46e5',
+      badgeBg: '#eef2ff',
+      description: 'Scans localized pixel blending, frequency irregularities, and compression artifacts.',
+      highlight: 'Visual Heatmap Supported',
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="2" y="2" width="20" height="20" rx="5" />
+          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+        </svg>
+      )
     },
     {
       id: 'vit',
       name: 'Vision Transformer (ViT-B/16)',
-      status: 'VERIFIED_CHECKPOINT',
-      checkpoint_available: true,
-      default_threshold: 0.65,
-      description: 'Patch self-attention transformer trained on FaceForensics++ C23. Test accuracy 87.81% at threshold 0.65 (ROC-AUC 0.9128).'
+      category: 'Self-Attention Architecture',
+      badge: 'High Precision AUC',
+      badgeColor: '#059669',
+      badgeBg: '#ecfdf5',
+      description: 'Decomposes facial regions into 196 image patches to detect structural inconsistencies.',
+      highlight: 'Global Feature Consistency',
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polygon points="12 2 2 7 12 12 22 7 12 2" />
+          <polyline points="2 17 12 22 22 17" />
+          <polyline points="2 12 12 17 22 12" />
+        </svg>
+      )
     }
-  ]);
-
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        const data = await getModels();
-        if (data.available_models && data.available_models.length > 0) {
-          setModelsList(data.available_models);
-        }
-      } catch (e) {
-        console.warn('Using default models registry fallback:', e);
-      }
-    };
-    fetchModels();
-  }, []);
-
-  const handleChange = async (e) => {
-    const modelId = e.target.value;
-    onModelChange(modelId);
-    try {
-      await selectModel(modelId);
-    } catch (err) {
-      console.warn('Could not update active model on backend:', err);
-    }
-  };
-
-  const activeModelMeta = modelsList.find(m => m.id === selectedModel) || modelsList[0];
+  ];
 
   return (
-    <div style={{
-      padding: '20px 24px',
-      background: '#f8fafc',
-      borderRadius: 'var(--radius-md)',
-      border: '1px solid var(--border-subtle)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '12px'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-        <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-          🧠 Select Model Architecture:
-        </label>
-        <span className="badge badge-emerald" style={{ fontSize: '0.75rem' }}>
-          Real Checkpoint Verified ✓
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+          Choose Detection Engine
+        </span>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          Select model architecture for analysis
         </span>
       </div>
 
-      <select
-        value={selectedModel}
-        onChange={handleChange}
-        style={{
-          width: '100%',
-          padding: '12px 16px',
-          borderRadius: 'var(--radius-sm)',
-          border: '1.5px solid var(--border-medium)',
-          background: '#ffffff',
-          color: 'var(--text-primary)',
-          fontSize: '0.95rem',
-          fontWeight: 600,
-          outline: 'none',
-          cursor: 'pointer'
-        }}
-      >
-        {modelsList.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name} [{m.status || 'VERIFIED'}] {m.checkpoint_available ? '✓' : ''}
-          </option>
-        ))}
-      </select>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '14px'
+      }}>
+        {models.map((m) => {
+          const isSelected = selectedModel === m.id;
+          return (
+            <div
+              key={m.id}
+              onClick={() => onModelChange(m.id)}
+              style={{
+                padding: '18px 20px',
+                borderRadius: 'var(--radius-md)',
+                background: isSelected ? '#ffffff' : '#f8fafc',
+                border: isSelected ? '2px solid #4f46e5' : '1px solid var(--border-subtle)',
+                boxShadow: isSelected ? '0 8px 20px -4px rgba(79, 70, 229, 0.15)' : 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    color: isSelected ? '#4f46e5' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {m.icon}
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: isSelected ? '#4f46e5' : 'var(--text-primary)', margin: 0 }}>
+                      {m.name}
+                    </h4>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                      {m.category}
+                    </span>
+                  </div>
+                </div>
 
-      {activeModelMeta && (
-        <div style={{
-          padding: '10px 14px',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '6px',
-          fontSize: '0.8rem',
-          color: 'var(--text-secondary)',
-          lineHeight: 1.45
-        }}>
-          <div>{activeModelMeta.description}</div>
-          <div style={{ marginTop: '4px', fontWeight: 600, color: '#4338ca' }}>
-            Decision Threshold: {activeModelMeta.default_threshold ?? 0.5} • Explainability: {selectedModel === 'vit' ? 'Self-Attention Token Maps (Grad-CAM N/A)' : 'Layer-Activation Grad-CAM'}
-          </div>
-        </div>
-      )}
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  border: isSelected ? '6px solid #4f46e5' : '2px solid #cbd5e1',
+                  background: '#ffffff',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0
+                }} />
+              </div>
+
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                {m.description}
+              </p>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '8px',
+                borderTop: '1px solid #f1f5f9',
+                fontSize: '0.76rem'
+              }}>
+                <span style={{ color: 'var(--text-muted)' }}>{m.highlight}</span>
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  background: m.badgeBg,
+                  color: m.badgeColor,
+                  fontWeight: 600
+                }}>
+                  {m.badge}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
