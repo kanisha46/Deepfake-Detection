@@ -77,10 +77,17 @@ def compute_synthetic_artifacts(pil_img: Image.Image) -> Tuple[float, Dict[str, 
     score_smooth = max(0.0, min(1.0, (1.80 - smooth_texture) / 1.20))
 
     # Composite synthetic indicator [0, 1]
+    # 4. Sensor Noise via Donoho median estimator
+    sobel_noise = cv2.Sobel(gray, cv2.CV_64F, 1, 1, ksize=3)
+    noise_sigma = float(np.median(np.abs(sobel_noise)) / 0.6745) if sobel_noise.size > 0 else 2.0
+    score_noise = max(0.0, min(1.0, (1.20 - noise_sigma) / 1.0))
+
+    # Composite synthetic indicator [0, 1]
     synthetic_indicator = (
-        0.55 * score_color +
-        0.30 * score_spectral +
-        0.15 * score_smooth
+        0.40 * score_color +
+        0.30 * score_noise +
+        0.20 * score_spectral +
+        0.10 * score_smooth
     )
 
     stats = {
@@ -88,6 +95,7 @@ def compute_synthetic_artifacts(pil_img: Image.Image) -> Tuple[float, Dict[str, 
         "corr_gb": round(corr_gb, 4),
         "fourier_slope": round(slope, 4),
         "smooth_texture": round(smooth_texture, 4),
+        "noise_sigma": round(noise_sigma, 4),
         "synthetic_indicator": round(synthetic_indicator, 4)
     }
 
@@ -113,8 +121,8 @@ def run_prediction(
         else DEFAULT_THRESHOLDS.get(resolved_model_id, 0.5)
     )
 
-    # 1. Preprocess with face detection
-    input_tensor, processed_pil = preprocess_image(image, auto_face_crop=True)
+    # 1. Multi-scale preprocessing with biometric face localization
+    input_tensor, processed_pil, was_cropped = preprocess_image(image, auto_face_crop=True)
     input_tensor = input_tensor.to(registry.device)
 
     # 2. Deep learning backbone inference
@@ -122,52 +130,57 @@ def run_prediction(
     with torch.no_grad():
         logits = model(input_tensor)
         raw_probs = F.softmax(logits, dim=1)[0]
-    inference_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
     raw_prob_real = float(raw_probs[0].item())
     raw_prob_fake = float(raw_probs[1].item())
 
-    # 3. Physical & frequency forensic sensor metrics for explanation
+    # If a subregion face was cropped, evaluate both the face crop and global frame to aggregate cues
+    if was_cropped:
+        tensor_global, _, _ = preprocess_image(image, auto_face_crop=False)
+        tensor_global = tensor_global.to(registry.device)
+        with torch.no_grad():
+            logits_global = model(tensor_global)
+            probs_global = F.softmax(logits_global, dim=1)[0]
+        prob_global_fake = float(probs_global[1].item())
+        raw_prob_fake = max(raw_prob_fake, 0.85 * prob_global_fake)
+        raw_prob_real = 1.0 - raw_prob_fake
+
+    inference_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+    # 3. Physical & frequency forensic sensor metrics
+    synthetic_indicator, forensic_stats = compute_synthetic_artifacts(image)
+    corr_rb = forensic_stats["corr_rb"]
+    noise_sigma = forensic_stats["noise_sigma"]
+    fourier_slope = forensic_stats["fourier_slope"]
+
+    # Blur detection via Laplacian variance
     img_np = np.array(image.convert("RGB"))
     gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-    h, w = gray.shape
+    laplacian_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+    is_blurry = laplacian_var < 50.0
 
-    # Sensor noise estimation via Donoho wavelet / median estimator
-    sobel_noise = cv2.Sobel(gray, cv2.CV_64F, 1, 1, ksize=3)
-    noise_sigma = float(np.median(np.abs(sobel_noise)) / 0.6745) if sobel_noise.size > 0 else 2.0
-
-    # Fourier high-frequency radial power spectral decay
-    f = np.fft.fft2(gray)
-    fshift = np.fft.fftshift(f)
-    mag = np.abs(fshift)
-    cy, cx = h // 2, w // 2
-    y, x = np.ogrid[:h, :w]
-    dist = np.sqrt((x - cx)**2 + (y - cy)**2).astype(np.int32)
-    r_max = min(cy, cx)
-    slope = -1.60
-    if r_max > 15:
-        radial_profile = [np.mean(mag[dist == i]) for i in range(1, r_max)]
-        freqs = np.arange(1, r_max)
-        log_freqs = np.log(freqs)
-        log_power = np.log(np.array(radial_profile) + 1e-8)
-        try:
-            poly = np.polyfit(log_freqs[10:], log_power[10:], 1)
-            slope = float(poly[0])
-        except Exception:
-            slope = -1.60
-
-    # 4. Calibrated Model Probabilities
-    # The deep learning backbone (EfficientNet-B0 or ViT-B/16) provides the primary decision.
-    prob_real = raw_prob_real
+    # 4. Calibrated Multi-Domain Decision Fusion
+    # (A) Generative AI Diffusion & GAN Detection:
+    # Modern generators (Flux, Midjourney, Stable Diffusion, DALL-E) produce flattened sensor noise
+    # (sigma < 0.85) along with high cross-channel covariance or anomalous Fourier falloff.
+    is_diffusion_synthetic = False
     prob_fake = raw_prob_fake
 
-    # Soft synthetic adjustment: only if physical camera sensor noise is virtually nonexistent (sigma < 0.5)
-    # typical of flat digital diffusion synthesis, and raw fake probability is near threshold
-    is_diffusion_synthetic = False
-    if noise_sigma < 0.5 and prob_fake >= 0.35:
-        prob_fake = min(0.85, prob_fake + 0.20)
-        prob_real = 1.0 - prob_fake
+    if not is_blurry and noise_sigma < 0.85 and (corr_rb >= 0.88 or synthetic_indicator >= 0.48):
         is_diffusion_synthetic = True
+        synth_confidence = 0.65 + 0.30 * min(1.0, max(0.0, (synthetic_indicator - 0.45) / 0.40))
+        prob_fake = max(raw_prob_fake, synth_confidence)
+    elif raw_prob_fake >= threshold:
+        # Manipulated deepfake detected by deep learning backbone
+        prob_fake = raw_prob_fake
+    else:
+        # Genuine photograph: natural camera sensor noise verified
+        if noise_sigma >= 1.20:
+            prob_fake = min(raw_prob_fake, 0.35)
+        else:
+            prob_fake = raw_prob_fake
+
+    prob_real = 1.0 - prob_fake
 
     # 5. Decision policy & inconclusive margin calibration
     dist_from_threshold = abs(prob_fake - threshold)
@@ -190,13 +203,14 @@ def run_prediction(
         confidence_val = round(prob_fake * 100, 2)
         confidence_score = round(prob_fake, 4)
         if is_diffusion_synthetic:
-            message = "Synthetic media identified: The image exhibits generative diffusion artifacts and lack of physical camera sensor noise."
+            message = "Synthetic AI Media Identified: Generative diffusion artifacts and lack of natural camera sensor noise detected."
             explanation = (
                 f"Predicted SYNTHETIC with {confidence_val}% confidence. "
-                f"Absence of sensor noise (sigma={noise_sigma:.2f}) and model attention indicate synthetic generation."
+                f"Absence of physical camera sensor noise (sigma={noise_sigma:.2f}), cross-channel correlation (corr={corr_rb:.2f}), "
+                f"and deep learning feature attention verify AI generation."
             )
         else:
-            message = "Manipulated media identified: The model detected structural and frequency artifacts characteristic of deepfake imagery."
+            message = "Manipulated Deepfake Identified: The model detected structural and frequency manipulation characteristic of deepfakes."
             explanation = (
                 f"Predicted FAKE with {confidence_val}% confidence. "
                 f"Facial manipulation probability ({prob_fake:.4f}) exceeds the calibrated threshold of {threshold:.3f}."
@@ -205,11 +219,14 @@ def run_prediction(
         prediction = "REAL"
         confidence_val = round(prob_real * 100, 2)
         confidence_score = round(prob_real, 4)
-        message = "Authentic photograph: The model verified natural biometric features and photographic sensor characteristics."
+        message = "Authentic Photograph: The model verified natural biometric features and authentic camera sensor characteristics."
         explanation = (
             f"Predicted AUTHENTIC with {confidence_val}% confidence. "
-            f"Natural camera sensor noise (sigma={noise_sigma:.2f}, spectral slope={slope:.2f}) and biometric facial features match genuine photography."
+            f"Physical camera sensor noise (sigma={noise_sigma:.2f}, spectral slope={fourier_slope:.2f}) and biometric facial features match genuine photography."
         )
+
+    if is_blurry:
+        explanation += " Note: The image appears blurry, which may reduce prediction reliability."
 
     # 6. Grad-CAM if requested
     gradcam_base64 = None

@@ -7,8 +7,7 @@ export default function Navbar() {
     { path: '/', label: 'Overview' },
     { path: '/detection', label: 'Detector' },
     { path: '/experiments', label: 'Benchmarks' },
-    { path: '/research', label: 'Methodology' },
-    { path: '/about', label: 'Research Team' },
+    { path: '/research', label: 'Methodology' }
   ];
 
   return (
